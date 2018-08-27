@@ -1,2 +1,5 @@
 [service]
 port = 12345
+
+[k8s]
+headless_port = 2222

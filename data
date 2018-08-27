@@ -1,0 +1,13 @@
+{
+    "type": "tensorflow",
+    "file": "/xxx/",
+    "resource": {
+        "cpu": 2,
+        "mem": "4g",
+        "gpu": 1
+    },
+    "detail": {
+        "ps": 1,
+        "worker": 2
+    }
+}

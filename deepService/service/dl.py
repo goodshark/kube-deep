@@ -5,6 +5,7 @@ sys.path.append(os.path.split(os.path.realpath(__file__))[0]+"/..")
 import tornado
 from tornado.web import Application
 from util.ApiConfiger import ApiConfig
+from handlers.train_handler import TrainHandler
 import logging
 
 class DisDeepService(object):
@@ -13,7 +14,7 @@ class DisDeepService(object):
 
     def start(self):
         app = tornado.web.Application([
-            (r"v1/train", None)
+            (r"v1/train", TrainHandler)
             ])
         app.listen(self.config.getint("service", "port"))
         logging.info("service start ...")

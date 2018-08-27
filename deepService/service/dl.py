@@ -14,7 +14,7 @@ class DisDeepService(object):
 
     def start(self):
         app = tornado.web.Application([
-            (r"v1/train", TrainHandler)
+            (r"/v1/train", TrainHandler)
             ])
         app.listen(self.config.getint("service", "port"))
         logging.info("service start ...")
@@ -22,4 +22,5 @@ class DisDeepService(object):
 
 if __name__ == '__main__':
     service = DisDeepService()
+    print 'start ....'
     service.start()

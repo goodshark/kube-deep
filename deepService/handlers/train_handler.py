@@ -36,6 +36,7 @@ class TrainHandler(tornado.web.RequestHandler):
         for workType in runInfo:
             for i in range(runInfo.get(workType, 1)):
                 body = self.genV1Service(workType)
+                print body
                 try:
                     api_response = api_instance.create_namespaced_service(namespace, body)
                     print api_response
@@ -46,8 +47,50 @@ class TrainHandler(tornado.web.RequestHandler):
     def deleteService(self):
         pass
 
+    def genV1Job(self, info):
+        body = kubernetes.client.V1Job()
+        body.api_version = "batch/v1"
+        body.kind = "Job"
+        metaBody = kubernetes.client.V1ObjectMeta()
+        metaBody.name = "abcTODO"
+        body.metadata = metaBody
+
+        specBody = kubernetes.client.V1JobSpec()
+        tempSpec = kubernetes.client.V1PodTemplateSpec()
+        tempMetaBody = kubernetes.client.V1ObjectMeta()
+        tempMetaBody.name = "abcTODO"
+        tempMetaBody.labels = {"tf": "abcTODO"}
+        tempSpec.metadata = tempMetaBody
+        tempInnerSpec = kubernetes.client.V1PodSpec()
+        tempInnerSpec.restart_policy = "Never"
+        containerBody = kubernetes.client.V1Container()
+        tempInnerSpec.containers = [containerBody]
+        containerBody.name = "abcTODO"
+        containerBody.image = "abcTODO"
+        containerBody.command = ["ls", "-l"]
+        portBody = kubernetes.client.V1ContainerPort(2222)
+        containerBody.ports = [portBody]
+        tempSpec.spec = tempInnerSpec
+        specBody.template = tempSpec
+        body.spec = specBody
+        return body
+        
+
     def createJob(self, info):
-        pass
+        configuration = kubernetes.client.Configuration()
+        api_instance = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
+        runInfo = info.get("detail", None)
+        for workType in runInfo:
+            for i in runInfo.get(workType, 1):
+                try:
+                    body = self.genV1Job(info)
+                    print body
+                    api_response = api_instance.create_namespaced_service(namespace, body)
+                    print api_response
+                except ApiException as e:
+                    print("Exception when calling BatchV1Api->create_namespaced_job: %s\n" % e)
+                    raise
+
 
     def deleteJob(self):
         pass

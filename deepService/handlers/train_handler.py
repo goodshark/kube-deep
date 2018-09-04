@@ -1,7 +1,9 @@
 # coding: utf-8
 import tornado
 import json
+import uuid
 from util.ApiConfiger import ApiConfig
+import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
@@ -13,31 +15,35 @@ class TrainHandler(tornado.web.RequestHandler):
     def parse(self, data):
         return json.loads(data)
 
-    def genV1Service(self, workType):
+    def genV1Service(self, uid, workType, seq, count):
+        tfId = "-".join(["tf", uid, workType, str(seq), str(count)])
         body = kubernetes.client.V1Service()
         body.api_version = "v1"
         body.kind = "Service"
         metaBody = kubernetes.client.V1ObjectMeta()
-        metaBody.name = "abcTODO"
+        metaBody.name = tfId
         body.metadata = metaBody
         specBody = kubernetes.client.V1ServiceSpec()
-        specBody.cluster_ip = None
-        specBody.selector = {"tf": "abcTODO"}
-        portBody = kubernetes.client.V1ServicePort()
-        portBody.port = ApiConfig().getint("k8s", "headless_port")
+        specBody.cluster_ip = "None"
+        specBody.selector = {"tf": tfId}
+        portBody = kubernetes.client.V1ServicePort(port=ApiConfig().getint("k8s", "headless_port"))
         portBody.target_port = ApiConfig().getint("k8s", "headless_port")
         specBody.ports = [portBody]
         body.spec = specBody
+        return body
 
-    def createService(self, runInfo):
+    def createService(self, uid, runInfo):
+        config.load_kube_config()
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         namespace = 'default'
         for workType in runInfo:
-            for i in range(runInfo.get(workType, 1)):
-                body = self.genV1Service(workType)
+            workCount = runInfo.get(workType, 1)
+            for i in xrange(workCount):
+                body = self.genV1Service(uid, workType, i, workCount)
                 print body
                 try:
+                    print '='*10 
                     api_response = api_instance.create_namespaced_service(namespace, body)
                     print api_response
                 except ApiException as e:
@@ -47,45 +53,51 @@ class TrainHandler(tornado.web.RequestHandler):
     def deleteService(self):
         pass
 
-    def genV1Job(self, info):
+    def genV1Job(self, uid, workType, seq, count, info, ps, workers):
+        tfId = "-".join(["tf", str(uid), workType, str(seq), str(count)])
         body = kubernetes.client.V1Job()
         body.api_version = "batch/v1"
         body.kind = "Job"
         metaBody = kubernetes.client.V1ObjectMeta()
-        metaBody.name = "abcTODO"
+        metaBody.name = tfId
         body.metadata = metaBody
 
-        specBody = kubernetes.client.V1JobSpec()
         tempSpec = kubernetes.client.V1PodTemplateSpec()
         tempMetaBody = kubernetes.client.V1ObjectMeta()
-        tempMetaBody.name = "abcTODO"
-        tempMetaBody.labels = {"tf": "abcTODO"}
+        tempMetaBody.name = tfId
+        tempMetaBody.labels = {"tf": tfId}
         tempSpec.metadata = tempMetaBody
-        tempInnerSpec = kubernetes.client.V1PodSpec()
+        containerBody = kubernetes.client.V1Container(name=tfId)
+        tempInnerSpec = kubernetes.client.V1PodSpec(containers=[containerBody])
         tempInnerSpec.restart_policy = "Never"
-        containerBody = kubernetes.client.V1Container()
-        tempInnerSpec.containers = [containerBody]
-        containerBody.name = "abcTODO"
-        containerBody.image = "abcTODO"
-        containerBody.command = ["ls", "-l"]
-        portBody = kubernetes.client.V1ContainerPort(2222)
+        #tempInnerSpec.containers = [containerBody]
+        #containerBody.name = tfId
+        containerBody.image = ApiConfig().get("image", "tensorflow")
+        containerBody.command = ["/notebooks/entry.sh", info.get("file", ""), ps, workers, workType, seq, info.get("data", "/notebooks")]
+        portBody = kubernetes.client.V1ContainerPort(ApiConfig().getint("k8s", "headless_port"))
         containerBody.ports = [portBody]
         tempSpec.spec = tempInnerSpec
-        specBody.template = tempSpec
+        specBody = kubernetes.client.V1JobSpec(template=tempSpec)
         body.spec = specBody
         return body
         
 
-    def createJob(self, info):
+    def createJob(self, uid, info):
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
         runInfo = info.get("detail", None)
+        ps_count = runInfo.get("ps", 0)
+        worker_count = runInfo.get("worker", 0)
+        ps_hosts = ["-".join(["tf", str(uid), "ps", str(i), str(ps_count)])+":2222" for i in xrange(ps_count)]
+        worker_hosts = ["-".join(["tf", str(uid), "worker", str(i), str(worker_count)])+":2222" for i in xrange(worker_count)]
         for workType in runInfo:
-            for i in runInfo.get(workType, 1):
+            count = runInfo.get(workType, 1)
+            for i in xrange(count):
                 try:
-                    body = self.genV1Job(info)
+                    body = self.genV1Job(uid, workType, i, count, info, ",".join(ps_hosts), ",".join(worker_hosts))
                     print body
-                    api_response = api_instance.create_namespaced_service(namespace, body)
+                    namespace = ApiConfig().get("namespace", info.get("type", "tensorflow"))
+                    api_response = api_instance.create_namespaced_job(namespace, body)
                     print api_response
                 except ApiException as e:
                     print("Exception when calling BatchV1Api->create_namespaced_job: %s\n" % e)
@@ -103,8 +115,10 @@ class TrainHandler(tornado.web.RequestHandler):
         headless service
         job // dns
         '''
-        self.createService(info["detail"])
-        self.createJob(info)
+        uid = uuid.uuid1()
+        self.createService(str(uid), info["detail"])
+        self.createJob(uid, info)
+        # TODO enqueue delete svc
 
     @tornado.web.asynchronous
     def post(self):

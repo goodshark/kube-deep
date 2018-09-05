@@ -73,7 +73,7 @@ class TrainHandler(tornado.web.RequestHandler):
         #tempInnerSpec.containers = [containerBody]
         #containerBody.name = tfId
         containerBody.image = ApiConfig().get("image", "tensorflow")
-        containerBody.command = ["/notebooks/entry.sh", info.get("file", ""), ps, workers, workType, seq, info.get("data", "/notebooks")]
+        containerBody.command = ["/notebooks/entry.sh", info.get("file", ""), ps, workers, workType, str(seq), info.get("data", "/notebooks")]
         portBody = kubernetes.client.V1ContainerPort(ApiConfig().getint("k8s", "headless_port"))
         containerBody.ports = [portBody]
         tempSpec.spec = tempInnerSpec
@@ -88,8 +88,11 @@ class TrainHandler(tornado.web.RequestHandler):
         runInfo = info.get("detail", None)
         ps_count = runInfo.get("ps", 0)
         worker_count = runInfo.get("worker", 0)
-        ps_hosts = ["-".join(["tf", str(uid), "ps", str(i), str(ps_count)])+":2222" for i in xrange(ps_count)]
-        worker_hosts = ["-".join(["tf", str(uid), "worker", str(i), str(worker_count)])+":2222" for i in xrange(worker_count)]
+        svcPort = ApiConfig().get("k8s", "headless_port")
+        ps_hosts = ["-".join(["tf", str(uid), "ps", str(i), str(ps_count)])+":"+svcPort for i in xrange(ps_count)]
+        worker_hosts = ["-".join(["tf", str(uid), "worker", str(i), str(worker_count)])+":"+svcPort for i in xrange(worker_count)]
+        print "ps: " + str(ps_hosts)
+        print "worker: " + str(worker_hosts)
         for workType in runInfo:
             count = runInfo.get(workType, 1)
             for i in xrange(count):

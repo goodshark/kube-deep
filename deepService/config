@@ -1,5 +1,15 @@
 [service]
 port = 12345
-
+ 
+[namespace]
+tensorflow = default
+ 
 [k8s]
 headless_port = 2222
+ 
+[image]
+tensorflow = tf-1:5000/tf-dis
+ 
+[redis]
+host = 127.0.0.1
+port = 30009

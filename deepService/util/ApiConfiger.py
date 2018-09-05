@@ -6,7 +6,7 @@ class ApiConfig(object):
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(ApiConfig, cls).__new__(cls)
-            return cls.instance
+        return cls.instance
 
     def __init__(self):
         self.config = ConfigParser.ConfigParser()

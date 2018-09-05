@@ -10,7 +10,8 @@ from kubernetes.client.rest import ApiException
 class TrainHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self):
-        pass
+        print 'GET'
+        self.finish()
 
     def parse(self, data):
         return json.loads(data)
@@ -125,6 +126,7 @@ class TrainHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def post(self):
+        print "POST"
         info = self.parse(self.request.body)
         print info
         self.submit(info)

@@ -116,11 +116,9 @@ class TrainHandler(tornado.web.RequestHandler):
         self.createService(str(uid), info["detail"])
         ps_hosts, worker_hosts = self.createJob(uid, info)
         self.storeInfo(uid, ps_hosts, worker_hosts)
-        # rc = RedisHelper().getRedis()
-        # TODO enqueue delete svc
 
     def storeInfo(self, uid, ps_hosts, worker_hosts):
-        info = {"ps": ps_hosts, "worker": worker_hosts}
+        info = {"ps": ps_hosts, "worker": worker_hosts, "status": "running"}
         js_info = json.dumps(info)
         rc = RedisHelper().getRedis()
         # TODO pipeline

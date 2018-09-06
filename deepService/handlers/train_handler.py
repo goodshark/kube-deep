@@ -1,8 +1,10 @@
 # coding: utf-8
 import tornado
 import json
+import redis
 import uuid
 from util.ApiConfiger import ApiConfig
+from util.RedisHelper import RedisHelper
 import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -50,9 +52,6 @@ class TrainHandler(tornado.web.RequestHandler):
                 except ApiException as e:
                     print("Exception when calling CoreV1Api->create_namespaced_service: %s\n" % e)
                     raise
-
-    def deleteService(self):
-        pass
 
     def genV1Job(self, uid, workType, seq, count, info, ps, workers):
         tfId = "-".join(["tf", str(uid), workType, str(seq), str(count)])
@@ -106,13 +105,7 @@ class TrainHandler(tornado.web.RequestHandler):
                 except ApiException as e:
                     print("Exception when calling BatchV1Api->create_namespaced_job: %s\n" % e)
                     raise
-
-
-    def deleteJob(self):
-        pass
-
-    def deletePsPod(self):
-        pass
+        return ps_hosts, worker_hosts
 
     def submit(self, info):
         '''
@@ -121,8 +114,18 @@ class TrainHandler(tornado.web.RequestHandler):
         '''
         uid = uuid.uuid1()
         self.createService(str(uid), info["detail"])
-        self.createJob(uid, info)
+        ps_hosts, worker_hosts = self.createJob(uid, info)
+        self.storeInfo(uid, ps_hosts, worker_hosts)
+        # rc = RedisHelper().getRedis()
         # TODO enqueue delete svc
+
+    def storeInfo(self, uid, ps_hosts, worker_hosts):
+        info = {"ps": ps_hosts, "worker": worker_hosts}
+        js_info = json.dumps(info)
+        rc = RedisHelper().getRedis()
+        # TODO pipeline
+        rc.sadd(ApiConfig().get("redis", "running_set"), uid)
+        rc.set(uid, js_info)
 
     @tornado.web.asynchronous
     def post(self):

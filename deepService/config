@@ -13,3 +13,5 @@ tensorflow = tf-1:5000/tf-dis:1.0
 [redis]
 host = 127.0.0.1
 port = 30009
+running_set = running_uids
+finish_set = finish_uids

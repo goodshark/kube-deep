@@ -1,6 +1,7 @@
 {
     "type": "tensorflow",
     "file": "/xxx/",
+    "data": "/yyy",
     "resource": {
         "cpu": 2,
         "mem": "4g",

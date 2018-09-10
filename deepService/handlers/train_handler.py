@@ -1,7 +1,6 @@
 # coding: utf-8
 import tornado
 import json
-import redis
 import uuid
 from util.ApiConfiger import ApiConfig
 from util.RedisHelper import RedisHelper

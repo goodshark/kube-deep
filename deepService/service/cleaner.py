@@ -1,9 +1,13 @@
 # coding: utf-8
+import sys
+import os
+sys.path.append(os.path.split(os.path.realpath(__file__))[0]+"/..")
 from util.RedisHelper import RedisHelper
 from util.ApiConfiger import ApiConfig
 import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+import time
 import json
 import traceback
 
@@ -17,6 +21,12 @@ class Cleaner(object):
             return api_response
         except ApiException as e:
             print("Exception when calling BatchV1Api->list_namespaced_job: %s\n" % e)
+
+    def moveUid(self, uid):
+        rc = RedisHelper().getRedis()
+        rc.smove(ApiConfig().get("redis", "running_set"),
+                ApiConfig().get("redis", "success_set"),
+                uid)
 
     def removePs(self, uids):
         configuration = kubernetes.client.Configuration()
@@ -32,9 +42,15 @@ class Cleaner(object):
             namespace = 'default'
             body = kubernetes.client.V1DeleteOptions()
             body.propagation_policy = 'Foreground'
-            for ps in psNames:
-                delJobInstance.delete_namespaced_job(ps, namespace, body)
-                delSvcInstance.delete_namespaced_service(ps, namespace, body)
+            for fullPs in psNames:
+                ps = fullPs.split(":")[0]
+                print 'delete ps ' + ps + ' ......'
+                try:
+                    delJobInstance.delete_namespaced_job(ps, namespace, body)
+                    delSvcInstance.delete_namespaced_service(ps, namespace, body)
+                    self.moveUid(uid)
+                except:
+                    traceback.print_exc()
 
     def checkJobs(self, jobInfo):
         successUids = []
@@ -43,24 +59,34 @@ class Cleaner(object):
         runningSets = rc.smembers(ApiConfig().get("redis", "running_set"))
         for info in jobInfo.items:
             uid = "-".join(info.metadata.name.split('-')[1:-3])
+            print "make uid: " + str(uid)
             if uid not in runningSets:
                 continue
             failedCount = info.status.failed
             succeedCount = info.status.succeeded
             uidJs = rc.get(uid)
+            print 'failedCount: ' + str(failedCount)
+            print 'succeedCount: ' + str(succeedCount)
+            print 'type: ' + str(type(succeedCount))
+            print 'uidjs: ' + uidJs
             if not uidJs:
                 continue
             uidDetail = json.loads(uidJs)
-            if not succeedCount and succeedCount == 1:
+            print 'detail: ' + str(uidDetail)
+            if succeedCount and succeedCount == 1:
+                print 'success done'
                 if "success" not in uidDetail:
-                    uidDetail["success"] = set()
-                uidDetail["success"].add(info.metadata.name)
+                    uidDetail["success"] = []
+                if info.metadata.name not in uidDetail["success"]:
+                    uidDetail["success"].append(info.metadata.name)
                 rc.set(uid, json.dumps(uidDetail))
             else:
-                if not failedCount and failedCount >= 1:
+                print 'failed done'
+                if failedCount and failedCount >= 1:
                     if "failed" not in uidDetail:
-                        uidDetail["failed"] = set()
-                    uidDetail["failed"].add(info.metadata.name)
+                        uidDetail["failed"] = []
+                    if info.metadata.name not in uidDetail["failed"]:
+                        uidDetail["failed"].append(info.metadata.name)
 
         for uid in runningSets:
             uidJs = rc.get(uid)
@@ -68,11 +94,11 @@ class Cleaner(object):
                 continue
             uidDetail = json.loads(uidJs)
             runningJobs = uidDetail.get("worker")
-            successJobs = uidDetail.get("success", set())
-            failedJobs = uidDetail.get("failed", set())
+            successJobs = uidDetail.get("success", [])
+            failedJobs = uidDetail.get("failed", [])
             if len(runningJobs) == len(successJobs):
                 successUids.append(uid)
-            else if len(failedJobs) >= 1:
+            elif len(failedJobs) >= 1:
                 failedUids.append(uid)
         return successUids, failedUids
 
@@ -84,8 +110,12 @@ class Cleaner(object):
                 jobInfo = self.getJobInfo()
                 successJobs, failedJobs = self.checkJobs(jobInfo)
                 self.removePs(successJobs)
+                time.sleep(5)
+            except KeyboardInterrupt:
+                break
             except:
                 traceback.print_exc()
+                time.sleep(5)
 
 
 if __name__ == '__main__':

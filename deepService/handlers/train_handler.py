@@ -127,7 +127,8 @@ class TrainHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self):
         print "POST"
+        print "data: " + str(self.request.body)
         info = self.parse(self.request.body)
-        print info
+        print "parse data: " + info
         self.submit(info)
         self.finish()

@@ -6,6 +6,7 @@ import tornado
 from tornado.web import Application
 from util.ApiConfiger import ApiConfig
 from handlers.train_handler import TrainHandler
+from handlers.upload_handler import UploadHandler
 import logging
 
 class DisDeepService(object):
@@ -14,7 +15,8 @@ class DisDeepService(object):
 
     def start(self):
         app = tornado.web.Application([
-            (r"/v1/train", TrainHandler)
+            (r"/v1/train", TrainHandler),
+            (r"/v1/upload/(.*)", UploadHandler)
             ])
         app.listen(self.config.getint("service", "port"))
         logging.info("service start ...")

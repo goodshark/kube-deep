@@ -72,7 +72,10 @@ class TrainHandler(tornado.web.RequestHandler):
         #tempInnerSpec.containers = [containerBody]
         #containerBody.name = tfId
         containerBody.image = ApiConfig().get("image", "tensorflow")
-        containerBody.command = ["/notebooks/entry.sh", info.get("file", ""), ps, workers, workType, str(seq), info.get("data", "/notebooks")]
+        hdfsUrl = ApiConfig().get("hdfs", "web")
+        hdfsNN = ApiConfig().get("hdfs", "namenode")
+        containerBody.command = ["/notebooks/entry.sh", workType, str(seq), ps, workers, info.get("file", ""),
+                                 info.get("data", "/notebooks"), info.get("export", "/tmp"), hdfsUrl, hdfsNN]
         portBody = kubernetes.client.V1ContainerPort(ApiConfig().getint("k8s", "headless_port"))
         containerBody.ports = [portBody]
         tempSpec.spec = tempInnerSpec
@@ -129,6 +132,6 @@ class TrainHandler(tornado.web.RequestHandler):
         print "POST"
         print "data: " + str(self.request.body)
         info = self.parse(self.request.body)
-        print "parse data: " + info
+        print "parse data: " + str(info)
         self.submit(info)
         self.finish()

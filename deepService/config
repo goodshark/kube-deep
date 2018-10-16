@@ -8,7 +8,7 @@ tensorflow = default
 headless_port = 2222
  
 [image]
-tensorflow = tf-1:5000/tf-dis:1.0
+tensorflow = tf-1:5000/tf-dis:4.0
  
 [redis]
 host = 127.0.0.1
@@ -20,3 +20,7 @@ success_set = success_uids
 hdfs_url = http://tf-1:14000/webhdfs/v1
 hdfs_user = root
 timeout = 10
+
+[hdfs]
+web = http://192.168.11.39:14000
+namenode = hdfs://192.168.11.39

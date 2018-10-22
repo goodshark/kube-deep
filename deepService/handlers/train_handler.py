@@ -110,14 +110,12 @@ class TrainHandler(tornado.web.RequestHandler):
         return ps_hosts, worker_hosts
 
     def submit(self, info):
-        '''
-        headless service
-        job // dns
-        '''
         uid = uuid.uuid1()
         self.createService(str(uid), info["detail"])
         ps_hosts, worker_hosts = self.createJob(uid, info)
         self.storeInfo(uid, ps_hosts, worker_hosts)
+        tf_hosts = ps_hosts + worker_hosts
+        self.write(json.dumps([pod.split(":")[0] for pod in tf_hosts]))
 
     def storeInfo(self, uid, ps_hosts, worker_hosts):
         info = {"ps": ps_hosts, "worker": worker_hosts, "status": "running"}

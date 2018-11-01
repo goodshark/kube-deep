@@ -24,3 +24,9 @@ timeout = 10
 [hdfs]
 web = http://192.168.11.39:14000
 namenode = hdfs://192.168.11.39
+
+[event]
+pool = 4
+ps_key = ps_hash
+worker_key = worker_hash
+handlers = MarkJobHandler, UpdateJobHandler

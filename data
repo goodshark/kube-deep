@@ -1,7 +1,9 @@
 {
     "type": "tensorflow",
+    "version": "1.5.0",
     "file": "/xxx/",
     "data": "/yyy",
+    "export": "/tmp",
     "resource": {
         "cpu": 2,
         "mem": "4g",

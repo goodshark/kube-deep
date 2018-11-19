@@ -15,12 +15,12 @@ class MarkJobHandler(EventHandler):
         psPt = "tf-([0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12})-ps-([0-9].*)-([0-9].*)"
         res = re.match(psPt, objName)
         if res:
-            psKey = res.group(1) + '-' + res.group(3)
-            rc.hsetnx(ApiConfig().get("event", "ps_key"), psKey, 0)
+            psKey = res.group(1)
+            rc.hsetnx(ApiConfig().get("event", "ps_key"), psKey, res.group(3))
         else:
             workerPt = "tf-([0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12})-worker-([0-9].*)-([0-9].*)"
             res = re.match(workerPt, objName)
             if not res:
                 return
-            workerKey = res.group(1) + '-' + res.group(3)
-            rc.hsetnx(ApiConfig().get("event", "worker_key"), workerKey, 0)
+            workerKey = res.group(1)
+            rc.hsetnx(ApiConfig().get("event", "worker_key"), workerKey, res.group(3))

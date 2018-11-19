@@ -8,7 +8,7 @@ tensorflow = default
 headless_port = 2222
  
 [image]
-tensorflow = tf-1:5000/tf-dis:4.0
+tensorflow = tf-1:5000/tf-dis:5.0
  
 [redis]
 host = 127.0.0.1
@@ -29,4 +29,5 @@ namenode = hdfs://192.168.11.39
 pool = 4
 ps_key = ps_hash
 worker_key = worker_hash
+delete_queue = tobe_delete
 handlers = MarkJobHandler, UpdateJobHandler

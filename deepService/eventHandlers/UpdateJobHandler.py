@@ -12,14 +12,13 @@ import traceback
 class UpdateJobHandler(EventHandler):
     def removePs(self, psList):
         print 'deleting ps list: ' + str(psList)
-        # TODO del k8s-ps, del keys
         config.load_kube_config()
         configuration = kubernetes.client.Configuration()
         delJobInstance = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
         delSvcInstance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         body = kubernetes.client.V1DeleteOptions()
         body.propagation_policy = 'Foreground'
-        namespace = 'default'
+        namespace = ApiConfig().get("namespace", "tensorflow")
         for ps in psList:
             try:
                 delJobInstance.delete_namespaced_job(ps, namespace, body)

@@ -8,6 +8,7 @@ import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import logging
+import traceback
 
 class TrainHandler(tornado.web.RequestHandler):
 
@@ -60,35 +61,47 @@ class TrainHandler(tornado.web.RequestHandler):
                     raise
 
     def genV1Job(self, uid, workType, seq, count, info, ps, workers):
-        tfId = "-".join(["tf", str(uid), workType, str(seq), str(count)])
-        body = kubernetes.client.V1Job()
-        body.api_version = "batch/v1"
-        body.kind = "Job"
-        metaBody = kubernetes.client.V1ObjectMeta()
-        metaBody.name = tfId
-        body.metadata = metaBody
+        try:
+            print 'gen v1 job ......'
+            tfId = "-".join(["tf", str(uid), workType, str(seq), str(count)])
+            body = kubernetes.client.V1Job()
+            body.api_version = "batch/v1"
+            body.kind = "Job"
+            metaBody = kubernetes.client.V1ObjectMeta()
+            metaBody.name = tfId
+            body.metadata = metaBody
 
-        tempSpec = kubernetes.client.V1PodTemplateSpec()
-        tempMetaBody = kubernetes.client.V1ObjectMeta()
-        tempMetaBody.name = tfId
-        tempMetaBody.labels = {"tf": tfId}
-        tempSpec.metadata = tempMetaBody
-        containerBody = kubernetes.client.V1Container(name=tfId)
-        tempInnerSpec = kubernetes.client.V1PodSpec(containers=[containerBody])
-        tempInnerSpec.restart_policy = "Never"
-        #tempInnerSpec.containers = [containerBody]
-        #containerBody.name = tfId
-        containerBody.image = ApiConfig().get("image", "tensorflow")
-        hdfsUrl = ApiConfig().get("hdfs", "web")
-        hdfsNN = ApiConfig().get("hdfs", "namenode")
-        containerBody.command = ["/notebooks/entry.sh", workType, str(seq), ps, workers, info.get("file", ""),
-                                 info.get("data", "/notebooks"), info.get("export", "/tmp"), hdfsUrl, hdfsNN]
-        portBody = kubernetes.client.V1ContainerPort(ApiConfig().getint("k8s", "headless_port"))
-        containerBody.ports = [portBody]
-        tempSpec.spec = tempInnerSpec
-        specBody = kubernetes.client.V1JobSpec(template=tempSpec)
-        body.spec = specBody
-        return body
+            tempSpec = kubernetes.client.V1PodTemplateSpec()
+            tempMetaBody = kubernetes.client.V1ObjectMeta()
+            tempMetaBody.name = tfId
+            tempMetaBody.labels = {"tf": tfId}
+            tempSpec.metadata = tempMetaBody
+            containerBody = kubernetes.client.V1Container(name=tfId)
+            volBody = kubernetes.client.V1Volume(name="glusterfsvol")
+            gfsVol = kubernetes.client.V1GlusterfsVolumeSource(endpoints="glusterfs-cluster", path="gv1/good")
+            volBody.glusterfs = gfsVol
+            tempInnerSpec = kubernetes.client.V1PodSpec(containers=[containerBody], volumes=[volBody])
+            tempInnerSpec.restart_policy = "Never"
+            #tempInnerSpec.containers = [containerBody]
+            #containerBody.name = tfId
+            containerBody.image = ApiConfig().get("image", "tensorflow")
+            hdfsUrl = ApiConfig().get("hdfs", "web")
+            hdfsNN = ApiConfig().get("hdfs", "namenode")
+            containerBody.command = ["/notebooks/entry.sh", workType, str(seq), ps, workers, info.get("file", ""),
+                                     info.get("data", "/notebooks"), info.get("export", "/tmp"), hdfsUrl, hdfsNN,
+                                     info.get("main", "")]
+            portBody = kubernetes.client.V1ContainerPort(ApiConfig().getint("k8s", "headless_port"))
+            containerBody.ports = [portBody]
+            volMount = kubernetes.client.V1VolumeMount(mount_path="/mnt", name="glusterfsvol")
+            containerBody.volume_mounts = [volMount]
+            tempSpec.spec = tempInnerSpec
+            specBody = kubernetes.client.V1JobSpec(template=tempSpec)
+            body.spec = specBody
+            print 'gen v1 job ok ......'
+            return body
+        except:
+            print 'get exc ...'
+            traceback.print_exc()
         
 
     def createJob(self, uid, info):
@@ -138,11 +151,14 @@ class TrainHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def post(self):
-        print "POST"
-        print "data: " + str(self.request.body)
-        logging.info("POST data: " + str(self.request.body))
-        info = self.parse(self.request.body)
-        print "parse data: " + str(info)
-        logging.info("parse data: " + str(info))
-        self.submit(info)
+        try:
+            print "POST"
+            print "data: " + str(self.request.body)
+            logging.info("POST data: " + str(self.request.body))
+            info = self.parse(self.request.body)
+            print "parse data: " + str(info)
+            logging.info("parse data: " + str(info))
+            self.submit(info)
+        except:
+            traceback.print_exc()
         self.finish()

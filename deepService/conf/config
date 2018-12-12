@@ -8,7 +8,7 @@ tensorflow = default
 headless_port = 2222
  
 [image]
-tensorflow = tf-1:5000/tf-dis:5.0
+tensorflow = tf-1:5000/tf-model:3.0
  
 [redis]
 host = 127.0.0.1

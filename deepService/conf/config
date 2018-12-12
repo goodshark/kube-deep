@@ -6,9 +6,12 @@ tensorflow = default
  
 [k8s]
 headless_port = 2222
+rpc_port = 8500
+http_port = 8501
  
 [image]
 tensorflow = tf-1:5000/tf-model:3.0
+serving = tf-1:5000/serving:1.0
  
 [redis]
 host = 127.0.0.1

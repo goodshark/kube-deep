@@ -1,5 +1,6 @@
 # coding: utf-8
 import tornado
+import os
 import json
 import hashlib
 from util.ApiConfiger import ApiConfig
@@ -16,6 +17,12 @@ class UserHandler(tornado.web.RequestHandler):
         #self.finish()
         #self.write("good")
 
+    def initUserHome(self, name):
+        if os.path.exists('/mnt/'+name):
+            return False
+        os.mkdir('/mnt/'+name)
+        return True
+
     @tornado.web.asynchronous
     def post(self, action = ""):
         try:
@@ -28,7 +35,10 @@ class UserHandler(tornado.web.RequestHandler):
             sql = "insert into users (name, password) values ('{0}', '{1}')".format(name, digest)
             MysqlHelper().execute(sql)
             # TODO init user home
-            self.write("ok")
+            if not self.initUserHome(name):
+                self.write("user home already exists")
+            else:
+                self.write("ok")
         except:
             traceback.print_exc()
         finally:

@@ -8,6 +8,7 @@ tensorflow = default
 headless_port = 2222
 rpc_port = 8500
 http_port = 8501
+auth_file = abc
  
 [image]
 tensorflow = tf-1:5000/tf-model:3.0

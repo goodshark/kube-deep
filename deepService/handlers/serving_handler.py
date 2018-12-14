@@ -35,7 +35,7 @@ class ServingHandler(tornado.web.RequestHandler):
         return body
 
     def createService(self, uid, runInfo):
-        config.load_kube_config()
+        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         namespace = 'default'

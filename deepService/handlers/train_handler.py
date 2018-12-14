@@ -40,7 +40,7 @@ class TrainHandler(tornado.web.RequestHandler):
         return body
 
     def createService(self, uid, runInfo):
-        config.load_kube_config()
+        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         namespace = 'default'
@@ -137,7 +137,7 @@ class TrainHandler(tornado.web.RequestHandler):
         uid = uuid.uuid1()
         self.createService(str(uid), info["detail"])
         ps_hosts, worker_hosts = self.createJob(uid, info)
-        self.storeInfo(uid, ps_hosts, worker_hosts)
+        #self.storeInfo(uid, ps_hosts, worker_hosts)
         tf_hosts = ps_hosts + worker_hosts
         self.write(json.dumps([pod.split(":")[0] for pod in tf_hosts]))
 

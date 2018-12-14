@@ -81,6 +81,10 @@ class TestHandler(tornado.web.RequestHandler):
     #@tornado.web.authenticated
     @need_auth
     def get(self):
+        print self
+        print type(self)
+        print id(self)
+        print 'username: ' + self.basicUsername
         logging.info('GET stub')
         self.write("good")
         #self.finish()

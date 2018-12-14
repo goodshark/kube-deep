@@ -4,6 +4,7 @@ import json
 import uuid
 from util.ApiConfiger import ApiConfig
 from util.RedisHelper import RedisHelper
+from util.tool import need_auth
 import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -40,7 +41,8 @@ class TrainHandler(tornado.web.RequestHandler):
         return body
 
     def createService(self, uid, runInfo):
-        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
+        authFile = ApiConfig().get("k8s", "auth_file")
+        config.load_kube_config(authFile if authFile else None)
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         namespace = 'default'
@@ -78,7 +80,7 @@ class TrainHandler(tornado.web.RequestHandler):
             tempSpec.metadata = tempMetaBody
             containerBody = kubernetes.client.V1Container(name=tfId)
             volBody = kubernetes.client.V1Volume(name="glusterfsvol")
-            gfsVol = kubernetes.client.V1GlusterfsVolumeSource(endpoints="glusterfs-cluster", path="gv1/good")
+            gfsVol = kubernetes.client.V1GlusterfsVolumeSource(endpoints="glusterfs-cluster", path="gv1/good/"+self.basicUsername)
             volBody.glusterfs = gfsVol
             tempInnerSpec = kubernetes.client.V1PodSpec(containers=[containerBody], volumes=[volBody])
             tempInnerSpec.restart_policy = "Never"
@@ -149,6 +151,7 @@ class TrainHandler(tornado.web.RequestHandler):
         rc.sadd(ApiConfig().get("redis", "running_set"), uid)
         rc.set(uid, js_info)
 
+    @need_auth
     @tornado.web.asynchronous
     def post(self):
         try:

@@ -3,6 +3,7 @@ import tornado
 import json
 import uuid
 from util.ApiConfiger import ApiConfig
+from util.tool import need_auth
 import kubernetes
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -35,7 +36,8 @@ class ServingHandler(tornado.web.RequestHandler):
         return body
 
     def createService(self, uid, runInfo):
-        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
+        authFile = ApiConfig().get("k8s", "auth_file")
+        config.load_kube_config(authFile if authFile else None)
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         namespace = 'default'
@@ -47,12 +49,13 @@ class ServingHandler(tornado.web.RequestHandler):
             api_response = api_instance.create_namespaced_service(namespace, body)
             print api_response
             logging.info("service response: " + str(api_response))
+            return api_response.spec.cluster_ip+":"+ApiConfig().get("k8s", "http_port")
         except ApiException as e:
             print("Exception when calling CoreV1Api->create_namespaced_service: %s\n" % e)
             logging.info("Exception when calling CoreV1Api->create_namespaced_service: %s\n" % e)
             raise
 
-    def genV1Rs(self, uid, modelName):
+    def genV1Rs(self, uid, modelParentPath, modelName):
         servingId = "tf-serving-" + uid
         body = kubernetes.client.V1ReplicaSet()
         body.api_version = "apps/v1"
@@ -84,7 +87,9 @@ class ServingHandler(tornado.web.RequestHandler):
 
         volBody = kubernetes.client.V1Volume(name="glusterfsvol-"+uid)
         # TODO mount model path
-        gfsVol = kubernetes.client.V1GlusterfsVolumeSource(endpoints="glusterfs-cluster", path="gv1/good")
+        parentPath = modelParentPath + "/" if modelParentPath else ""
+        modelPath = "/" + parentPath + modelName
+        gfsVol = kubernetes.client.V1GlusterfsVolumeSource(endpoints="glusterfs-cluster", path="gv1/good/"+self.basicUsername+modelPath)
         volBody.glusterfs = gfsVol
 
         tempInnerSpec = kubernetes.client.V1PodSpec(containers=[containerBody], volumes=[volBody])
@@ -100,8 +105,10 @@ class ServingHandler(tornado.web.RequestHandler):
         configuration = kubernetes.client.Configuration()
         api_instance = kubernetes.client.AppsV1Api(kubernetes.client.ApiClient(configuration))
         namespace = ApiConfig().get("namespace", info.get("type", "tensorflow"))
+        model = info.get("name", "test")
+        modelParentPath = info.get("path", "/path")
         try:
-            body = self.genV1Rs(uid, info.get("name", "test"))
+            body = self.genV1Rs(uid, modelParentPath, model)
             api_response = api_instance.create_namespaced_replica_set(namespace, body)
         except ApiException as e:
             print("Exception when calling AppsV1Api->create_namespaced_replica_set: %s\n" % e)
@@ -110,10 +117,11 @@ class ServingHandler(tornado.web.RequestHandler):
 
     def submit(self, info):
         uid = uuid.uuid1()
-        self.createService(str(uid), info)
+        svcAddr = self.createService(str(uid), info)
         self.createRs(str(uid), info)
-        self.write('ready predict')
+        self.write('ready predict: ' + svcAddr)
 
+    @need_auth
     @tornado.web.asynchronous
     def post(self):
         try:

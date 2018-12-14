@@ -30,6 +30,7 @@ def need_auth(func):
                 return False
             digestFromDb = res[0][0]
             print "digest from db: " + digestFromDb
+            handler.basicUsername = username
             return digestFromUser == digestFromDb
         handler = None
         if len(args) > 0 and isinstance(args[0], tornado.web.RequestHandler):

@@ -19,7 +19,8 @@ class PsKiller(object):
     def removePs(self, psList):
         print 'deleting ps list: ' + str(psList)
         # TODO del k8s-ps, del keys
-        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
+        authFile = ApiConfig().get("k8s", "auth_file")
+        config.load_kube_config(authFile if authFile else None)
         configuration = kubernetes.client.Configuration()
         delJobInstance = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
         delSvcInstance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
@@ -38,7 +39,8 @@ class PsKiller(object):
     def removeWorker(self, workerList):
         print 'deleting worker list: ' + str(workerList)
         # TODO del k8s-ps, del keys
-        config.load_kube_config(ApiConfig().get("k8s", "auth_file"))
+        authFile = ApiConfig().get("k8s", "auth_file")
+        config.load_kube_config(authFile if authFile else None)
         configuration = kubernetes.client.Configuration()
         delSvcInstance = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient(configuration))
         body = kubernetes.client.V1DeleteOptions()
